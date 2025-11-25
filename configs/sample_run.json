@@ -1,0 +1,36 @@
+{
+  "training_duration_s": 20,
+  "experts": [
+    "python_expert",
+    "sql_expert",
+    "docs_expert"
+  ],
+  "workers": [
+    {
+      "id": "Worker-1-Fast",
+      "specialty": "python_expert",
+      "speed": 0.5
+    },
+    {
+      "id": "Worker-2-Slow",
+      "specialty": "python_expert",
+      "speed": 2.0
+    },
+    {
+      "id": "Worker-3-SQL",
+      "specialty": "sql_expert",
+      "speed": 1.0
+    },
+    {
+      "id": "Worker-4-Docs",
+      "specialty": "docs_expert",
+      "speed": 1.5
+    },
+    {
+      "id": "Worker-5-Python",
+      "specialty": "python_expert",
+      "speed": 1.0
+    }
+  ]
+}
+
