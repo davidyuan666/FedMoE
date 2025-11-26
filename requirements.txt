@@ -4,4 +4,6 @@ transformers>=4.30.0
 peft>=0.4.0
 accelerate>=0.20.0
 modelscope>=1.9.0
+flask>=2.0.0
+requests>=2.25.0
 

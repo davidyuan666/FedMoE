@@ -23,24 +23,7 @@ bash scripts/setup.sh
 2. 使用虚拟环境中的 `pip` 安装所有依赖
 3. 虚拟环境默认位置：`.venv/`
 
-### 方法 2：使用快速启动脚本（自动检查并设置）
-
-**Windows PowerShell:**
-```powershell
-.\scripts\run_qwen.ps1
-```
-
-**Linux/Mac Bash:**
-```bash
-bash scripts/run_qwen.sh
-```
-
-这些脚本会：
-1. 检查虚拟环境是否存在
-2. 如果不存在，自动创建并安装依赖
-3. 然后运行 Qwen 微调
-
-### 方法 3：使用 Python 安装脚本
+### 方法 2：使用 Python 安装脚本
 
 ```bash
 python install_deps.py
@@ -139,7 +122,7 @@ Remove-Item -Recurse -Force .venv  # Windows PowerShell
 ## 最佳实践
 
 1. **始终使用 setup 脚本**：它们确保依赖安装到正确的位置
-2. **运行前检查虚拟环境**：使用 `run_qwen_finetune.py` 会自动检查
+2. **运行前检查虚拟环境**：`run_qwen_finetune.py` 会在启动时给出提示
 3. **不要使用 `sudo pip install`**：这会安装到系统 Python
 4. **使用虚拟环境中的 Python**：运行脚本时使用 `.venv/bin/python` 或 `.venv/Scripts/python.exe`
 

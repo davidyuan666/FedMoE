@@ -25,66 +25,128 @@ FedMoE illustrates how an open-source base model such as Qwen-7B can be fine-tun
 - **Extensible to real Qwen models**: the same abstractions map cleanly onto vLLM / Transformers code where `lora_A`/`lora_B` would be real tensors.
 
 ## Architecture
-1. **CentralCoordinator**
-   - Registers experts (`python_expert`, `sql_expert`, `docs_expert`, …).
-   - Stores LoRA weights, versions, and applies updates with `SERVER_LR` and `STALENESS_DECAY`.
-2. **HeterogeneousWorker**
-   - Pulls the latest weights for its specialty.
-   - Runs local training on private corpora (simulated by random deltas) and pushes updates back.
-   - Models different GPU speeds via `speed_factor` and random network latency.
-3. **InferenceAgent**
-   - Routes user prompts to the relevant experts via regex-based intent detection.
-   - Locks coordinator state while performing inference to keep weight reads consistent.
+
+### 系统架构
+
+FedMoE 采用分布式联邦学习架构，支持多机器、多GPU的协同训练：
+
+1. **CentralCoordinator (协调器)**
+   - 注册和管理多个专家模型 (`python_expert`, `sql_expert`, `docs_expert`, …)
+   - 存储 LoRA 权重、版本控制，应用 `SERVER_LR` 和 `STALENESS_DECAY` 进行更新
+   - **门户模型 (Gateway Model)**: 自动聚合所有专家的梯度更新，形成统一的管理模型
+
+2. **DistributedWorker (分布式工作节点)**
+   - 从协调器拉取最新的全局权重
+   - 使用本地数据集进行微调（支持不同机器使用不同数据集）
+   - **定时上传梯度**: 按照配置的间隔（默认10秒）上传梯度更新
+   - 支持异构硬件（不同的 GPU 速度和网络延迟）
+
+3. **Gateway Model (门户/管理模型)**
+   - 整合所有垂直领域专家的梯度更新
+   - 使用加权平均策略聚合所有专家的知识
+   - 可以随时查询和导出，用于推理或部署
+
+详细的架构图请参考 [ARCHITECTURE.md](ARCHITECTURE.md)（包含 Graphviz DOT 语言描述的完整架构图）。
+
+## 快速开始
+
+### 分布式部署
+
+#### 1. 启动 Coordinator
+
+```bash
+# 使用脚本启动（推荐）
+bash scripts/start_coordinator.sh
+
+# 或指定参数
+bash scripts/start_coordinator.sh --host 0.0.0.0 --port 5000
+```
+
+#### 2. 在不同机器上启动 Workers
+
+```bash
+# 使用默认参数（自动连接本机 5000 端口，并生成 Worker ID）
+bash scripts/start_worker.sh
+
+# 机器1：Python 专家
+bash scripts/start_worker.sh \
+    --coordinator-url http://192.168.1.100:5000 \
+    --worker-id Worker-1-Python \
+    --specialty python_expert \
+    --dataset /path/to/python_dataset.jsonl \
+    --sync-interval 10.0
+
+# 机器2：SQL 专家
+bash scripts/start_worker.sh \
+    --coordinator-url http://192.168.1.100:5000 \
+    --worker-id Worker-2-SQL \
+    --specialty sql_expert \
+    --dataset /path/to/sql_dataset.jsonl \
+    --sync-interval 10.0
+```
+
+#### 3. 查看状态和停止服务
+
+```bash
+# 查看所有服务状态
+bash scripts/status.sh
+
+# 停止所有服务
+bash scripts/stop_all.sh
+
+# 停止单个服务
+bash scripts/stop_coordinator.sh
+bash scripts/stop_worker.sh --worker-id Worker-1-Python
+```
+
+更多脚本使用说明请参考 [scripts/README.md](scripts/README.md)。
+
+### 查询门户模型
+
+```bash
+# 查看门户模型信息
+python get_gateway_model.py --coordinator-url http://192.168.1.100:5000
+
+# 保存门户模型
+python get_gateway_model.py \
+    --coordinator-url http://192.168.1.100:5000 \
+    --save-gateway gateway_model.npz \
+    --list-experts
+```
+
+详细的门户模型使用说明请参考 [GATEWAY_MODEL_USAGE.md](GATEWAY_MODEL_USAGE.md)。
 
 ## Running Real Qwen Fine-Tuning
 
 **重要提示：所有依赖必须安装到虚拟环境中！**
 
-#### 方式 1：一键启动（推荐）⭐
+#### 方式 1：快速运行（推荐）
 
-直接运行快速启动脚本，它会自动检查并设置虚拟环境：
+1. **准备虚拟环境**（仅首次需要）  
+   ```bash
+   # Windows PowerShell
+   .\scripts\setup.ps1
 
-```bash
-# Windows PowerShell（自动检查并创建虚拟环境）
-.\scripts\run_qwen.ps1
+   # Linux/Mac Bash
+   bash scripts/setup.sh
+   ```
+2. **激活虚拟环境**  
+   ```bash
+   # Windows
+   .\.venv\Scripts\Activate.ps1
 
-# Linux/Mac Bash（自动检查并创建虚拟环境）
-bash scripts/run_qwen.sh
-```
+   # Linux/Mac
+   source .venv/bin/activate
+   ```
+3. **运行 Qwen 微调**  
+   ```bash
+   python run_qwen_finetune.py
+   ```
 
-**说明：** 这些脚本会自动：
-1. 检查虚拟环境是否存在
-2. 如果不存在，自动运行 `setup.sh/setup.ps1` 创建虚拟环境并安装依赖
-3. 然后直接运行 Qwen 微调
-
-#### 方式 2：手动分步（可选）
-
-如果你想手动控制每个步骤：
-
-```bash
-# 步骤1：创建虚拟环境并安装依赖
-# Windows PowerShell
-.\scripts\setup.ps1
-
-# Linux/Mac Bash
-bash scripts/setup.sh
-
-# 步骤2：运行 Qwen 微调
-# Windows PowerShell
-.\scripts\run_qwen.ps1
-
-# Linux/Mac Bash
-bash scripts/run_qwen.sh
-```
-
-#### 方式 3：使用 Python 脚本（需要先激活虚拟环境）
+#### 方式 2：直接使用 Python 脚本（已激活虚拟环境）
 
 ```bash
-# 先激活虚拟环境
-# Windows: .\.venv\Scripts\Activate.ps1
-# Linux/Mac: source .venv/bin/activate
-
-# 然后运行
+# 在激活虚拟环境后直接运行
 python run_qwen_finetune.py
 ```
 
@@ -123,6 +185,13 @@ The provided loop is deliberately lightweight so you can swap the simulated logi
 - Support hierarchical aggregation layers (edge → regional → central) for large federations.
 - Swap the regex router with a planner that reasons over tool descriptions.
 - Benchmark real Qwen adapters with mixed precision and fused optimizers.
+
+## 文档
+
+- [ARCHITECTURE.md](ARCHITECTURE.md): 系统架构图（Graphviz DOT 格式）
+- [DISTRIBUTED_SETUP.md](DISTRIBUTED_SETUP.md): 分布式部署详细指南
+- [GATEWAY_MODEL_USAGE.md](GATEWAY_MODEL_USAGE.md): 门户模型使用指南
+- [scripts/README.md](scripts/README.md): 启动脚本使用说明
 
 ## License
 MIT – customize the orchestration to fit your own multi-GPU, cross-domain fine-tuning workflows.
