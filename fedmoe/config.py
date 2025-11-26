@@ -19,3 +19,24 @@ DEFAULT_WORKERS = [
 # Default expert names to register
 DEFAULT_EXPERTS = ["python_expert", "sql_expert", "docs_expert"]
 
+
+# Configuration for Qwen fine-tuning
+from dataclasses import dataclass
+from typing import List, Tuple
+
+
+@dataclass
+class SimulationConfig:
+    """
+    Configuration for Qwen fine-tuning.
+    """
+
+    training_duration_s: float = 15.0
+    worker_specs: List[Tuple[str, str, float]] = None
+    expert_names: List[str] = None
+
+    def __post_init__(self) -> None:
+        if self.worker_specs is None:
+            self.worker_specs = DEFAULT_WORKERS
+        if self.expert_names is None:
+            self.expert_names = DEFAULT_EXPERTS

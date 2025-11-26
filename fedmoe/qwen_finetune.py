@@ -31,7 +31,7 @@ except ImportError:
     MODELSCOPE_AVAILABLE = False
     snapshot_download = None
 
-from .config import LORA_RANK, MODEL_DIM
+from .config import DEFAULT_EXPERTS, DEFAULT_WORKERS, LORA_RANK, MODEL_DIM, SimulationConfig
 
 
 def load_jsonl_dataset(file_path: str | Path) -> List[Dict]:
@@ -196,63 +196,37 @@ class QwenLoRAExpert:
     def get_lora_weights(self) -> Tuple[np.ndarray, np.ndarray]:
         """
         提取当前 LoRA 权重 (lora_A 和 lora_B)。
-        收集所有相同形状的 LoRA 层并聚合，确保形状一致性。
+        只提取 q_proj 层的权重，确保与 coordinator 的形状一致。
+        q_proj 层的输入维度是 hidden_size，输出维度也是 hidden_size（对于 Qwen 模型）。
 
         Returns:
-            (lora_A, lora_B) 的 numpy 数组元组
+            (lora_A, lora_B) 的 numpy 数组元组，形状为 (hidden_size, rank) 和 (rank, hidden_size)
         """
+        model_dim = self.base_model.config.hidden_size
         lora_A_list = []
         lora_B_list = []
-        target_shape_A = None
-        target_shape_B = None
 
-        # 首先找到目标形状（使用第一个 q_proj 层的形状作为标准）
+        # 只收集 q_proj 层的权重（确保与 coordinator 维度一致）
+        # q_proj 的输入是 hidden_size，输出也是 hidden_size（对于 Qwen）
         for name, module in self.model.named_modules():
             if hasattr(module, "lora_A") and hasattr(module, "lora_B") and "q_proj" in name:
                 A_weight = module.lora_A["default"].weight.data.cpu().numpy()
                 B_weight = module.lora_B["default"].weight.data.cpu().numpy()
-                target_shape_A = A_weight.shape
-                target_shape_B = B_weight.shape
-                break
-
-        # 如果没有找到 q_proj，使用第一个找到的层
-        if target_shape_A is None:
-            for name, module in self.model.named_modules():
-                if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
-                    A_weight = module.lora_A["default"].weight.data.cpu().numpy()
-                    B_weight = module.lora_B["default"].weight.data.cpu().numpy()
-                    target_shape_A = A_weight.shape
-                    target_shape_B = B_weight.shape
-                    break
-
-        if target_shape_A is None:
-            # 如果没有找到 LoRA 层，返回零矩阵
-            model_dim = self.base_model.config.hidden_size
-            return (
-                np.zeros((model_dim, self.lora_rank)),
-                np.zeros((self.lora_rank, model_dim)),
-            )
-
-        # 收集所有与目标形状匹配的 LoRA 层
-        for name, module in self.model.named_modules():
-            if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
-                A_weight = module.lora_A["default"].weight.data.cpu().numpy()
-                B_weight = module.lora_B["default"].weight.data.cpu().numpy()
                 
-                # 只收集形状匹配的层
-                if A_weight.shape == target_shape_A and B_weight.shape == target_shape_B:
+                # 只收集形状为 (hidden_size, rank) 和 (rank, hidden_size) 的层
+                # 这确保与 coordinator 中的维度一致
+                if A_weight.shape == (model_dim, self.lora_rank) and B_weight.shape == (self.lora_rank, model_dim):
                     lora_A_list.append(A_weight)
                     lora_B_list.append(B_weight)
 
         if len(lora_A_list) == 0:
-            # 如果没有匹配的层，返回零矩阵
-            model_dim = self.base_model.config.hidden_size
+            # 如果没有找到匹配的层，返回零矩阵
             return (
                 np.zeros((model_dim, self.lora_rank)),
                 np.zeros((self.lora_rank, model_dim)),
             )
 
-        # 聚合所有匹配的 LoRA 层的权重（简单平均）
+        # 聚合所有 q_proj 层的权重（简单平均）
         lora_A = np.mean(lora_A_list, axis=0)
         lora_B = np.mean(lora_B_list, axis=0)
 
@@ -263,21 +237,34 @@ class QwenLoRAExpert:
     ) -> None:
         """
         更新 LoRA 权重。
-        只更新与输入形状匹配的 LoRA 层，确保一致性。
+        只更新 q_proj 层，确保与 coordinator 的维度一致。
         注意：lora_A 和 lora_B 是增量（delta），会被添加到当前权重上。
 
         Args:
-            lora_A: lora_A 权重增量
-            lora_B: lora_B 权重增量
+            lora_A: lora_A 权重增量，形状应为 (hidden_size, rank)
+            lora_B: lora_B 权重增量，形状应为 (rank, hidden_size)
             learning_rate: 学习率（用于缩放更新）
         """
+        model_dim = self.base_model.config.hidden_size
+        expected_shape_A = (model_dim, self.lora_rank)
+        expected_shape_B = (self.lora_rank, model_dim)
+        
+        # 检查输入形状
+        if lora_A.shape != expected_shape_A or lora_B.shape != expected_shape_B:
+            print(
+                f"[QwenExpert] 警告: {self.expert_name} 权重形状不匹配！"
+                f"期望: A={expected_shape_A}, B={expected_shape_B}, "
+                f"实际: A={lora_A.shape}, B={lora_B.shape}"
+            )
+            return
+        
         lora_A_tensor = torch.from_numpy(lora_A).to(self.device)
         lora_B_tensor = torch.from_numpy(lora_B).to(self.device)
 
         updated_count = 0
-        # 更新所有形状匹配的 LoRA 层
+        # 只更新 q_proj 层，确保与 coordinator 维度一致
         for name, module in self.model.named_modules():
-            if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
+            if hasattr(module, "lora_A") and hasattr(module, "lora_B") and "q_proj" in name:
                 # 获取当前权重
                 current_A = module.lora_A["default"].weight.data
                 current_B = module.lora_B["default"].weight.data
@@ -293,12 +280,12 @@ class QwenLoRAExpert:
                     updated_count += 1
 
         if updated_count == 0:
-            print(f"[QwenExpert] 警告: {self.expert_name} 没有找到形状匹配的 LoRA 层进行更新")
-            print(f"  期望形状: A={lora_A.shape}, B={lora_B.shape}")
+            print(f"[QwenExpert] 警告: {self.expert_name} 没有找到形状匹配的 q_proj 层进行更新")
+            print(f"  期望形状: A={expected_shape_A}, B={expected_shape_B}")
 
         self.version += 1
         if updated_count > 0:
-            print(f"[QwenExpert] {self.expert_name} 权重已更新 (版本: {self.version}, 更新了 {updated_count} 个层)")
+            print(f"[QwenExpert] {self.expert_name} 权重已更新 (版本: {self.version}, 更新了 {updated_count} 个 q_proj 层)")
 
     def fine_tune_step(
         self,
@@ -506,4 +493,110 @@ def create_qwen_expert(
         lora_rank=lora_rank,
         use_modelscope=use_modelscope,
     )
+
+
+# 导入必要的模块用于系统初始化
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .coordinator import CentralCoordinator
+    from .qwen_worker import QwenWorker
+
+
+def initialize_qwen_system(
+    config: SimulationConfig,
+    base_model_name: str = "qwen/Qwen2-0.5B-Instruct",
+    use_modelscope: bool = True,
+    training_data_path: str | None = None,
+) -> tuple:
+    """
+    初始化使用真实 Qwen 模型的系统。
+
+    Args:
+        config: 配置
+        base_model_name: 基础 Qwen 模型名称（ModelScope 格式：小写开头）
+        use_modelscope: 是否使用 ModelScope 加载模型（默认 True）
+        training_data_path: JSONL 数据集文件路径（如果提供，所有 worker 会使用此数据集）
+
+    Returns:
+        (coordinator, workers) 元组
+    """
+    from .coordinator import CentralCoordinator
+    from .qwen_worker import QwenWorker
+    
+    # 先创建一个临时专家来获取实际模型的 hidden_size
+    # 这样可以确保 coordinator 使用正确的维度
+    temp_expert = QwenLoRAExpert(
+        expert_name="temp",
+        base_model_name=base_model_name,
+        use_modelscope=use_modelscope,
+    )
+    actual_model_dim = temp_expert.base_model.config.hidden_size
+    print(f"[QwenFineTune] 检测到模型 hidden_size: {actual_model_dim}")
+    
+    # 清理临时专家（释放模型内存）
+    del temp_expert
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    
+    coordinator = CentralCoordinator()
+    for expert_name in config.expert_names:
+        coordinator.register_expert(expert_name, actual_model_dim, LORA_RANK)
+    workers = [
+        QwenWorker(
+            worker_id,
+            coordinator,
+            specialty,
+            speed_factor,
+            base_model_name,
+            training_data_path=training_data_path,
+            use_modelscope=use_modelscope,
+        )
+        for worker_id, specialty, speed_factor in config.worker_specs
+    ]
+    return coordinator, workers
+
+
+def run_qwen_simulation(
+    config: SimulationConfig = SimulationConfig(),
+    base_model_name: str = "qwen/Qwen2-0.5B-Instruct",
+    use_modelscope: bool = True,
+    training_data_path: str | None = None,
+) -> None:
+    """
+    运行使用真实 Qwen 模型的微调。
+
+    Args:
+        config: 配置
+        base_model_name: 基础 Qwen 模型名称（ModelScope 格式：小写开头）
+        use_modelscope: 是否使用 ModelScope 加载模型（默认 True）
+        training_data_path: JSONL 数据集文件路径（如果提供，所有 worker 会使用此数据集）
+    """
+    import threading
+    import time
+    
+    print("\n=== [使用真实 Qwen 模型进行微调] ===")
+    if training_data_path:
+        print(f"使用数据集: {training_data_path}")
+    coordinator, workers = initialize_qwen_system(
+        config, base_model_name, use_modelscope, training_data_path
+    )
+    
+    # 运行训练阶段
+    print("\n--- [Phase 1: Starting Distributed Training] ---")
+    stop_event = threading.Event()
+    threads: list[threading.Thread] = []
+    for worker in workers:
+        thread = threading.Thread(target=worker.run_loop, args=(stop_event,))
+        thread.start()
+        threads.append(thread)
+
+    time.sleep(config.training_duration_s)
+
+    print("\n--- [Phase 2: Stopping Training] ---")
+    stop_event.set()
+    for thread in threads:
+        thread.join(timeout=3.0)
+    print("All workers stopped.")
+    print("\n=== [微调完成] ===")
 

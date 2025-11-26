@@ -126,6 +126,34 @@ class QwenWorker:
         # 更新本地专家的权重以匹配全局权重
         # 获取当前权重，计算差值，然后应用更新
         current_A, current_B = self.expert.get_lora_weights()
+        
+        # 检查形状是否匹配
+        if current_A.shape != lora_A.shape or current_B.shape != lora_B.shape:
+            print(
+                f"  [{self.worker_id}] 警告: 权重形状不匹配！"
+                f"当前: A={current_A.shape}, B={current_B.shape}, "
+                f"全局: A={lora_A.shape}, B={lora_B.shape}"
+            )
+            # 如果形状不匹配，尝试调整或跳过更新
+            # 这里我们尝试调整全局权重以匹配当前权重
+            if current_A.shape == lora_A.shape:
+                # A 形状匹配，只更新 B
+                if current_B.shape[0] == lora_B.shape[0]:  # rank 相同
+                    # 调整 B 的第二个维度
+                    if lora_B.shape[1] > current_B.shape[1]:
+                        lora_B = lora_B[:, :current_B.shape[1]]
+                    else:
+                        # 填充零
+                        padded_B = np.zeros_like(current_B)
+                        padded_B[:, :lora_B.shape[1]] = lora_B
+                        lora_B = padded_B
+                else:
+                    print(f"  [{self.worker_id}] 错误: LoRA rank 不匹配，跳过更新")
+                    return np.zeros_like(current_A), np.zeros_like(current_B)
+            else:
+                print(f"  [{self.worker_id}] 错误: 权重形状完全不匹配，跳过更新")
+                return np.zeros_like(current_A), np.zeros_like(current_B)
+        
         delta_A = lora_A - current_A
         delta_B = lora_B - current_B
         self.expert.update_lora_weights(delta_A, delta_B, learning_rate=1.0)
