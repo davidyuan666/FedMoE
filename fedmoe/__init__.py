@@ -23,6 +23,8 @@ from .simulation import (
     run_training_phase,
     run_inference_phase,
     run_simulation,
+    initialize_qwen_system,
+    run_qwen_simulation,
 )
 
 __all__ = [
@@ -41,5 +43,7 @@ __all__ = [
     "run_training_phase",
     "run_inference_phase",
     "run_simulation",
+    "initialize_qwen_system",
+    "run_qwen_simulation",
 ]
 

@@ -13,6 +13,7 @@ from .agent import InferenceAgent
 from .config import DEFAULT_EXPERTS, DEFAULT_WORKERS, LORA_RANK, MODEL_DIM
 from .coordinator import CentralCoordinator
 from .workers import HeterogeneousWorker
+from .qwen_worker import QwenWorker
 
 
 @dataclass
@@ -76,6 +77,67 @@ def run_inference_phase(coordinator: CentralCoordinator) -> None:
 
 def run_simulation(config: SimulationConfig = SimulationConfig()) -> None:
     coordinator, workers = initialize_system(config)
+    run_training_phase(workers, config.training_duration_s)
+    run_inference_phase(coordinator)
+
+
+def initialize_qwen_system(
+    config: SimulationConfig,
+    base_model_name: str = "qwen/Qwen2-0.5B-Instruct",
+    use_modelscope: bool = True,
+    training_data_path: str | None = None,
+) -> Tuple[CentralCoordinator, List[QwenWorker]]:
+    """
+    初始化使用真实 Qwen 模型的系统。
+
+    Args:
+        config: 模拟配置
+        base_model_name: 基础 Qwen 模型名称（ModelScope 格式：小写开头）
+        use_modelscope: 是否使用 ModelScope 加载模型（默认 True）
+        training_data_path: JSONL 数据集文件路径（如果提供，所有 worker 会使用此数据集）
+
+    Returns:
+        (coordinator, workers) 元组
+    """
+    coordinator = CentralCoordinator()
+    for expert_name in config.expert_names:
+        coordinator.register_expert(expert_name, MODEL_DIM, LORA_RANK)
+    workers = [
+        QwenWorker(
+            worker_id,
+            coordinator,
+            specialty,
+            speed_factor,
+            base_model_name,
+            training_data_path=training_data_path,
+            use_modelscope=use_modelscope,
+        )
+        for worker_id, specialty, speed_factor in config.worker_specs
+    ]
+    return coordinator, workers
+
+
+def run_qwen_simulation(
+    config: SimulationConfig = SimulationConfig(),
+    base_model_name: str = "qwen/Qwen2-0.5B-Instruct",
+    use_modelscope: bool = True,
+    training_data_path: str | None = None,
+) -> None:
+    """
+    运行使用真实 Qwen 模型的微调模拟。
+
+    Args:
+        config: 模拟配置
+        base_model_name: 基础 Qwen 模型名称（ModelScope 格式：小写开头）
+        use_modelscope: 是否使用 ModelScope 加载模型（默认 True）
+        training_data_path: JSONL 数据集文件路径（如果提供，所有 worker 会使用此数据集）
+    """
+    print("\n=== [使用真实 Qwen 模型进行微调] ===")
+    if training_data_path:
+        print(f"使用数据集: {training_data_path}")
+    coordinator, workers = initialize_qwen_system(
+        config, base_model_name, use_modelscope, training_data_path
+    )
     run_training_phase(workers, config.training_duration_s)
     run_inference_phase(coordinator)
 
