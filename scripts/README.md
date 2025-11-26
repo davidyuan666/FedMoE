@@ -42,8 +42,11 @@ bash scripts/start_coordinator.sh --debug
 ### 2. 启动 Worker
 
 ```bash
-# 最简用法（全部使用默认值）
+# 最简用法（全部使用默认值，前台模式）
 bash scripts/start_worker.sh
+
+# 后台运行（便于在服务器上常驻）
+bash scripts/start_worker.sh --daemon
 
 # 常用参数
 bash scripts/start_worker.sh \
@@ -57,13 +60,15 @@ bash scripts/start_worker.sh \
     --sync-interval 10.0
 ```
 
-默认行为：
+默认行为（前台模式）：
 
 - `--coordinator-url`: 默认 `http://127.0.0.1:5000`
 - `--specialty`: 默认 `python_expert`
 - `--worker-id`: 自动生成（`{hostname}-{specialty}-{timestamp}`）
 - `--dataset`: 自动搜索 `dataset/{specialty}.jsonl`、`dataset/test.jsonl`
 - 其他参数使用 `scripts/start_worker.sh` 顶部的默认值
+- 默认禁用系统代理（避免被本地调试端口劫持，如需使用代理可传 `--use-proxy` 或设置 `USE_PROXY=true`）
+- 输出实时显示（同时写入日志），按 `Ctrl+C` 可停止
 
 可以通过环境变量覆盖默认值（无需修改脚本）：
 
@@ -71,16 +76,17 @@ bash scripts/start_worker.sh \
 export COORDINATOR_URL=http://192.168.1.100:5000
 export SPECIALTY=sql_expert
 export DATASET=/data/sql_dataset.jsonl
+export USE_PROXY=true  # 如需通过系统代理访问 Coordinator
 bash scripts/start_worker.sh
 ```
 
-### 3. 查看服务状态
+### 3. 查看服务状态（仅后台模式）
 
 ```bash
 bash scripts/status.sh
 ```
 
-输出示例：
+输出示例（仅显示后台运行的进程）：
 ```
 ==========================================
 FedMoE 服务状态
@@ -96,6 +102,9 @@ Workers:
 
 ### 4. 停止服务
 
+- **前台模式**：直接在终端按 `Ctrl+C`。
+- **后台模式**：使用以下脚本：
+
 ```bash
 # 停止 Coordinator
 bash scripts/stop_coordinator.sh
@@ -103,7 +112,7 @@ bash scripts/stop_coordinator.sh
 # 停止指定的 Worker
 bash scripts/stop_worker.sh --worker-id Worker-1-Python
 
-# 停止所有服务
+# 停止所有后台服务
 bash scripts/stop_all.sh
 ```
 
@@ -124,9 +133,9 @@ tail -f logs/coordinator.log
 tail -f logs/worker-Worker-1-Python.log
 ```
 
-## PID 文件
+## PID 文件（仅后台模式）
 
-脚本使用 PID 文件来跟踪运行中的进程：
+在 `--daemon` 模式下，脚本会创建 PID 文件来跟踪运行中的进程：
 
 - `coordinator.pid`: Coordinator 的 PID
 - `logs/worker-{WORKER_ID}.pid`: 各 Worker 的 PID

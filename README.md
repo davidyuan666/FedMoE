@@ -55,18 +55,24 @@ FedMoE 采用分布式联邦学习架构，支持多机器、多GPU的协同训�
 #### 1. 启动 Coordinator
 
 ```bash
-# 使用脚本启动（推荐）
+# 使用脚本启动（前台模式，可实时看到输出）
 bash scripts/start_coordinator.sh
 
 # 或指定参数
 bash scripts/start_coordinator.sh --host 0.0.0.0 --port 5000
+
+# 后台运行（配合 stop/status 脚本）
+bash scripts/start_coordinator.sh --daemon
 ```
 
 #### 2. 在不同机器上启动 Workers
 
 ```bash
-# 使用默认参数（自动连接本机 5000 端口，并生成 Worker ID）
+# 使用默认参数（前台模式，自动连接本机 5000 端口，并生成 Worker ID）
 bash scripts/start_worker.sh
+
+# 后台运行
+bash scripts/start_worker.sh --daemon
 
 # 机器1：Python 专家
 bash scripts/start_worker.sh \
@@ -83,21 +89,28 @@ bash scripts/start_worker.sh \
     --specialty sql_expert \
     --dataset /path/to/sql_dataset.jsonl \
     --sync-interval 10.0
+
+# 如需通过系统代理访问 Coordinator，可追加:
+# bash scripts/start_worker.sh --use-proxy
 ```
 
 #### 3. 查看状态和停止服务
 
 ```bash
-# 查看所有服务状态
+# 查看后台服务状态（仅 --daemon 模式会显示）
 bash scripts/status.sh
 
-# 停止所有服务
+# 停止所有后台服务
 bash scripts/stop_all.sh
 
-# 停止单个服务
+# 停止单个后台服务
 bash scripts/stop_coordinator.sh
 bash scripts/stop_worker.sh --worker-id Worker-1-Python
 ```
+
+> 前台模式下可直接在终端按 `Ctrl+C` 停止。
+>
+> Worker 默认禁用系统代理以避免本地调试端口被拦截；如确需代理，可使用 `--use-proxy` 或设置 `USE_PROXY=true`。
 
 更多脚本使用说明请参考 [scripts/README.md](scripts/README.md)。
 

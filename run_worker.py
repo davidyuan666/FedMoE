@@ -69,6 +69,11 @@ def main():
         help="使用 HuggingFace 而不是 ModelScope",
     )
     parser.add_argument(
+        "--use-proxy",
+        action="store_true",
+        help="允许使用系统代理访问 Coordinator（默认禁用代理）",
+    )
+    parser.add_argument(
         "--sync-interval",
         type=float,
         default=10.0,
@@ -99,6 +104,7 @@ def main():
         training_data_path=args.dataset,
         use_modelscope=not args.use_huggingface,
         sync_interval=args.sync_interval,
+        use_proxy=args.use_proxy,
     )
 
     # 运行 worker

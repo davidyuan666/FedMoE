@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -31,7 +32,35 @@ except ImportError:
     MODELSCOPE_AVAILABLE = False
     snapshot_download = None
 
-from .config import DEFAULT_EXPERTS, DEFAULT_WORKERS, LORA_RANK, MODEL_DIM, SimulationConfig
+from .config import LORA_RANK
+
+
+DEFAULT_WORKERS: List[Tuple[str, str, float]] = [
+    ("Worker-1-Fast", "python_expert", 0.5),
+    ("Worker-2-Slow", "python_expert", 2.0),
+    ("Worker-3-SQL", "sql_expert", 1.0),
+    ("Worker-4-Docs", "docs_expert", 1.5),
+    ("Worker-5-Python", "python_expert", 1.0),
+]
+
+DEFAULT_EXPERTS: List[str] = ["python_expert", "sql_expert", "docs_expert"]
+
+
+@dataclass
+class SimulationConfig:
+    """
+    Configuration blueprint for the built-in single-machine demo.
+    """
+
+    training_duration_s: float = 15.0
+    worker_specs: List[Tuple[str, str, float]] | None = None
+    expert_names: List[str] | None = None
+
+    def __post_init__(self) -> None:
+        if self.worker_specs is None:
+            self.worker_specs = DEFAULT_WORKERS
+        if self.expert_names is None:
+            self.expert_names = DEFAULT_EXPERTS
 
 
 def load_jsonl_dataset(file_path: str | Path) -> List[Dict]:

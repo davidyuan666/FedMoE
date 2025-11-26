@@ -29,6 +29,7 @@ DEFAULT_SPEED_FACTOR="${SPEED_FACTOR:-1.0}"
 DEFAULT_DURATION="${DURATION:-3600}"
 DEFAULT_SYNC_INTERVAL="${SYNC_INTERVAL:-10.0}"
 DEFAULT_USE_HF="${USE_HUGGINGFACE:-false}"
+DEFAULT_USE_PROXY="${USE_PROXY:-false}"
 RUN_MODE="${RUN_MODE:-foreground}" # foreground | daemon
 
 COORDINATOR_URL="$DEFAULT_COORDINATOR_URL"
@@ -40,6 +41,7 @@ SPEED_FACTOR="$DEFAULT_SPEED_FACTOR"
 DURATION="$DEFAULT_DURATION"
 SYNC_INTERVAL="$DEFAULT_SYNC_INTERVAL"
 USE_HUGGINGFACE="$DEFAULT_USE_HF"
+USE_PROXY="$DEFAULT_USE_PROXY"
 
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
@@ -78,6 +80,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --use-huggingface)
             USE_HUGGINGFACE="true"
+            shift
+            ;;
+        --use-proxy)
+            USE_PROXY="true"
             shift
             ;;
         --daemon)
@@ -180,6 +186,10 @@ fi
 
 if [ "$USE_HUGGINGFACE" = "true" ]; then
     CMD+=("--use-huggingface")
+fi
+
+if [ "$USE_PROXY" = "true" ]; then
+    CMD+=("--use-proxy")
 fi
 
 cd "$PROJECT_ROOT"

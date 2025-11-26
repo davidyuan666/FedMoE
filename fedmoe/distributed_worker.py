@@ -32,6 +32,7 @@ class DistributedWorker:
         training_data_path: str | None = None,
         use_modelscope: bool = True,
         sync_interval: float = 10.0,
+        use_proxy: bool = False,
     ):
         """
         初始化分布式 Worker。
@@ -45,6 +46,7 @@ class DistributedWorker:
             training_data_path: JSONL 数据集文件路径
             use_modelscope: 是否使用 ModelScope 加载模型
             sync_interval: 定时上传梯度的间隔（秒，默认10秒）
+            use_proxy: 是否使用系统代理访问 Coordinator（默认: False）
         """
         self.coordinator_url = coordinator_url.rstrip("/")
         self.worker_id = worker_id
@@ -52,10 +54,16 @@ class DistributedWorker:
         self.speed_factor = speed_factor
         self.base_model_name = base_model_name
         self.sync_interval = sync_interval
+        self.use_proxy = use_proxy
+
+        # 创建 HTTP 会话，默认禁用系统代理，避免本地调试端口被劫持
+        self.session = requests.Session()
+        if not use_proxy:
+            self.session.trust_env = False
 
         # 检查 coordinator 是否可用
         try:
-            response = requests.get(f"{self.coordinator_url}/health", timeout=5)
+            response = self.session.get(f"{self.coordinator_url}/health", timeout=5)
             if response.status_code != 200:
                 raise ConnectionError(f"Coordinator 健康检查失败: {response.status_code}")
             print(f"[{worker_id}] 成功连接到 Coordinator: {coordinator_url}")
@@ -97,7 +105,7 @@ class DistributedWorker:
         lora_rank = self.expert.lora_rank
 
         try:
-            response = requests.post(
+            response = self.session.post(
                 f"{self.coordinator_url}/register_expert",
                 json={
                     "expert_name": self.specialty,
@@ -116,7 +124,7 @@ class DistributedWorker:
     def _get_expert_weights(self) -> Tuple[np.ndarray, np.ndarray, int]:
         """从 coordinator 获取专家权重"""
         try:
-            response = requests.post(
+            response = self.session.post(
                 f"{self.coordinator_url}/get_expert_weights",
                 json={"expert_name": self.specialty},
                 timeout=30,
@@ -139,7 +147,7 @@ class DistributedWorker:
         """推送专家更新到 coordinator"""
         delta_A, delta_B = lora_delta
         try:
-            response = requests.post(
+            response = self.session.post(
                 f"{self.coordinator_url}/push_expert_update",
                 json={
                     "expert_name": self.specialty,
