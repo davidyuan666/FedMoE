@@ -10,7 +10,7 @@ from fedmoe.experiments import ExperimentConfig, RQ3Experiment
 def main():
     parser = argparse.ArgumentParser(description="RQ3 - Continual domain shift & rehearsal (single-machine 3xRTX3060)")
     # Data
-    parser.add_argument("--dataset", type=str, default="dataset/test.jsonl")
+    parser.add_argument("--dataset", type=str, default="dataset/ds1000.jsonl")
     parser.add_argument("--num-samples", type=int, default=100)
     # Model
     parser.add_argument("--model-dim", type=int, default=768)

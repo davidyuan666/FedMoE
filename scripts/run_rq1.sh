@@ -5,7 +5,7 @@
 #
 # Usage (defaults shown):
 #   WORKER_GPUS=0,1 AGG_GPU=2 EXPERTS=python,sql \
-#   DATASET=dataset/test.jsonl NUM_SAMPLES=100 NUM_ROUNDS=10 ROUND_DURATION=5 \
+#   DATASET=dataset/ds1000.jsonl NUM_SAMPLES=100 NUM_ROUNDS=10 ROUND_DURATION=5 \
 #   MODEL_DIM=768 LORA_RANK=16 \
 #   ./scripts/run_rq1.sh
 #
@@ -28,7 +28,7 @@ PYTHON_BIN="${PYTHON:-python}"
 WORKER_GPUS="${WORKER_GPUS:-0,1}"
 AGG_GPU="${AGG_GPU:-2}"
 EXPERTS="${EXPERTS:-python,sql}"
-DATASET="${DATASET:-dataset/test.jsonl}"
+DATASET="${DATASET:-dataset/ds1000.jsonl}"
 NUM_SAMPLES="${NUM_SAMPLES:-100}"
 NUM_ROUNDS="${NUM_ROUNDS:-10}"
 ROUND_DURATION="${ROUND_DURATION:-5}"

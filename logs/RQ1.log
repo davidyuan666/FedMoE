@@ -1,0 +1,17 @@
+2025-12-03 20:47:21,681 - RQ1 - INFO - ============================================================
+2025-12-03 20:47:21,681 - RQ1 - INFO - RQ1 Experiment: Federated LoRA vs Isolated Local Fine-tuning
+2025-12-03 20:47:21,681 - RQ1 - INFO - ============================================================
+2025-12-03 20:47:21,681 - RQ1 - INFO - Starting Federated LoRA Training
+2025-12-03 20:47:28,244 - RQ1 - INFO - Round 0: Quality=0.0000, Comm=196608 bytes
+2025-12-03 20:56:41,678 - RQ1 - INFO - ============================================================
+2025-12-03 20:56:41,678 - RQ1 - INFO - RQ1 Experiment: Federated LoRA vs Isolated Local Fine-tuning
+2025-12-03 20:56:41,678 - RQ1 - INFO - ============================================================
+2025-12-03 20:56:41,678 - RQ1 - INFO - Starting Federated LoRA Training
+2025-12-03 20:56:46,494 - RQ1 - INFO - Round 0: Quality=0.0000, Comm=196608 bytes
+2025-12-03 21:05:06,414 - RQ1 - INFO - ============================================================
+2025-12-03 21:05:06,414 - RQ1 - INFO - RQ1 Experiment: Federated LoRA vs Isolated Local Fine-tuning
+2025-12-03 21:05:06,414 - RQ1 - INFO - ============================================================
+2025-12-03 21:05:06,414 - RQ1 - INFO - Starting Federated LoRA Training
+2025-12-03 21:05:12,474 - RQ1 - INFO - Round 0: Quality=0.0000, Comm=196608 bytes
+2025-12-03 21:05:21,347 - RQ1 - INFO - Round 1: Quality=0.0000, Comm=196608 bytes
+2025-12-03 21:05:31,785 - RQ1 - INFO - Round 2: Quality=0.0000, Comm=196608 bytes
