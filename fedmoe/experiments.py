@@ -20,6 +20,9 @@ import logging
 from .coordinator import CentralCoordinator, GatewayModel
 from .experts import ExpertModel
 from .workers import HeterogeneousWorker
+from .peft_coordinator import PeftCoordinator
+from .real_qwen_worker import RealQwenWorker
+from .qwen_lora_utils import QwenLoraCfg
 
 
 # ============================================================================
@@ -65,10 +68,10 @@ class RoundMetrics:
 class ExperimentConfig:
     """Configuration for experiments"""
     # Data
-    dataset_path: str = "dataset/test.jsonl"
+    dataset_path: str = "dataset/ds1000.jsonl"
     num_samples: int = 100  # Number of samples to use
     
-    # Model
+    # Simulated model (legacy)
     model_dim: int = 768
     lora_rank: int = 16
     
@@ -79,10 +82,6 @@ class ExperimentConfig:
     # Experts (default set)
     num_experts: int = 3
     expert_specialties: List[str] = field(default_factory=lambda: ["python", "sql", "docs"])
-    
-    # Communication (legacy - unused in redesigned RQ2/RQ3)
-    sync_interval: float = 5.0
-    communication_compression_ratio: float = 1.0
     
     # Aggregation (kept for completeness)
     aggregation_strategy: str = "weighted_average"
@@ -95,13 +94,23 @@ class ExperimentConfig:
     # Evaluation
     eval_interval: int = 1  # Evaluate every N rounds
     
-    # RQ2 (granularity) - list of expert sets to compare, e.g., [["generalist"],["python","sql"],["python","sql","docs"]]
+    # Real Qwen LoRA path
+    use_real_qwen: bool = False
+    base_model: str = "Qwen/Qwen2-0.5B-Instruct"
+    real_lora_r: int = 16
+    real_lora_alpha: int = 32
+    real_lora_dropout: float = 0.05
+    real_use_4bit: bool = True
+    real_local_steps: int = 5
+    real_batch_size: int = 1
+    
+    # RQ2 (granularity)
     rq2_expert_sets: Optional[List[List[str]]] = None
     
     # RQ3 (continual learning)
-    phase_domains: Optional[List[str]] = None   # e.g., ["python","sql","docs"]
-    phase_rounds: int = 4                       # rounds per phase
-    rehearsal_ratio: float = 0.1                # portion of rehearsal updates (0=no rehearsal)
+    phase_domains: Optional[List[str]] = None
+    phase_rounds: int = 4
+    rehearsal_ratio: float = 0.1
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
