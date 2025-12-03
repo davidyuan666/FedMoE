@@ -1,34 +1,0 @@
-2025-11-26 15:05:17,576 - modelscope - INFO - Target directory already exists, skipping creation.
-`torch_dtype` is deprecated! Use `dtype` instead!
-============================================================
-FedMoE - 分布式 Worker
-============================================================
-Coordinator: http://127.0.0.1:5000
-Worker ID: davidyuan--python-expert--20251126150512
-Specialty: python_expert
-Base Model: qwen/Qwen2-0.5B-Instruct
-Dataset: D:/workspace/FedMoE/dataset/test.jsonl
-Speed Factor: 1.0
-Duration: 3600.0 秒
-Sync Interval: 10.0 秒
-
-[davidyuan--python-expert--20251126150512] 成功连接到 Coordinator: http://127.0.0.1:5000
-从 D:\workspace\FedMoE\dataset\test.jsonl 加载了 1000 条数据
-[davidyuan--python-expert--20251126150512] 从 D:/workspace/FedMoE/dataset/test.jsonl 加载了 1000 条训练数据
-[QwenExpert] 初始化专家: davidyuan--python-expert--20251126150512_python_expert (设备: cpu)
-[QwenExpert] 使用 ModelScope 加载模型: qwen/Qwen2-0.5B-Instruct
-Downloading Model from https://www.modelscope.cn to directory: C:\Users\david\.cache\modelscope\hub\models\qwen\Qwen2-0.5B-Instruct
-[QwenExpert] ModelScope 模型已下载到: C:\Users\david\.cache\modelscope\hub\models\qwen\Qwen2-0___5B-Instruct
-trainable params: 2,162,688 || all params: 496,195,456 || trainable%: 0.4359
-[QwenExpert] davidyuan--python-expert--20251126150512_python_expert 初始化完成
-[davidyuan--python-expert--20251126150512] 专家 python_expert 已注册到 Coordinator
-[davidyuan--python-expert--20251126150512] 分布式 Worker 初始化完成 (Specialty: python_expert, Speed: 1.0x, Data samples: 1000)
-
-=== [Worker davidyuan--python-expert--20251126150512 开始训练] ===
-[QwenExpert] 警告: davidyuan--python-expert--20251126150512_python_expert 没有找到形状匹配的 q_proj 层进行更新
-  期望形状: A=(896, 16), B=(16, 896)
-  [davidyuan--python-expert--20251126150512] Starting Qwen fine-tuning on python_expert... (Est. 3.96s, batch_size=4, epochs=1)
-[QwenExpert] davidyuan--python-expert--20251126150512_python_expert 开始微调...
-  0%|          | 0/250 [00:00<?, ?it/s]D:\workspace\FedMoE\.venv\Lib\site-packages\torch\utils\data\dataloader.py:668: UserWarning: 'pin_memory' argument is set as true but no accelerator is found, then device pinned memory won't be used.
-  warnings.warn(warn_msg)
-  0%|          | 1/250 [00:21<1:30:08, 21.72s/it]  1%|          | 2/250 [00:47<1:39:57, 24.18s/it]  1%|          | 3/250 [01:21<1:57:21, 28.51s/it]  2%|▏         | 4/250 [01:52<2:00:41, 29.44s/it]  2%|▏         | 5/250 [02:24<2:04:32, 30.50s/it]  2%|▏         | 6/250 [02:52<2:00:43, 29.68s/it]  3%|▎         | 7/250 [03:22<2:00:26, 29.74s/it]  3%|▎         | 8/250 [03:46<1:52:33, 27.91s/it]  4%|▎         | 9/250 [04:15<1:53:09, 28.17s/it]  4%|▍         | 10/250 [04:42<1:51:49, 27.96s/it]                                                    4%|▍         | 10/250 [04:42<1:51:49, 27.96s/it]  4%|▍         | 11/250 [05:12<1:53:21, 28.46s/it]  5%|▍         | 12/250 [05:40<1:52:29, 28.36s/it]  5%|▌         | 13/250 [06:11<1:55:12, 29.17s/it]  6%|▌         | 14/250 [06:38<1:51:45, 28.42s/it]  6%|▌         | 15/250 [07:06<1:51:26, 28.45s/it]  6%|▋         | 16/250 [07:42<1:59:57, 30.76s/it]  7%|▋         | 17/250 [08:08<1:53:18, 29.18s/it]  7%|▋         | 18/250 [08:31<1:46:21, 27.50s/it]  8%|▊         | 19/250 [08:59<1:46:20, 27.62s/it]  8%|▊         | 20/250 [09:28<1:47:06, 27.94s/it]                                                    8%|▊         | 20/250 [09:28<1:47:06, 27.94s/it]  8%|▊         | 21/250 [09:50<1:40:20, 26.29s/it]
