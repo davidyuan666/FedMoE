@@ -86,12 +86,16 @@ class CentralCoordinator:
     同时管理门户模型，用于聚合所有专家的梯度更新。
     """
 
-    def __init__(self, enable_gateway: bool = True) -> None:
+    def __init__(self, enable_gateway: bool = True, aggregator_device_id: Optional[int] = None) -> None:
         self.experts: Dict[str, ExpertModel] = {}
         self.gateway_model: Optional[GatewayModel] = None
         self.enable_gateway = enable_gateway
+        self.aggregator_device_id = aggregator_device_id
         self.lock = threading.Lock()
-        print("Central Coordinator Initialized.")
+        print(
+            "Central Coordinator Initialized. "
+            f"{('(Aggregator on GPU ' + str(self.aggregator_device_id) + ')') if self.aggregator_device_id is not None else ''}"
+        )
         if enable_gateway:
             print("[Coordinator] 门户模型功能已启用")
 

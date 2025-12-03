@@ -7,7 +7,7 @@ from __future__ import annotations
 import random
 import threading
 import time
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 
@@ -25,21 +25,27 @@ class HeterogeneousWorker:
         coordinator: CentralCoordinator,
         specialty: str,
         speed_factor: float,
+        device_id: Optional[int] = None,
     ) -> None:
         self.worker_id = worker_id
         self.coordinator = coordinator
         self.specialty = specialty
         self.speed_factor = speed_factor
+        self.device_id = device_id
         self.local_data = f"Simulated local data for {specialty}"
         print(
-            f"Worker {self.worker_id} (Specialty: {self.specialty}, Speed: {self.speed_factor:.1f}x) initialized."
+            f"Worker {self.worker_id} (Specialty: {self.specialty}, Speed: {self.speed_factor:.1f}x, "
+            f"GPU: {self.device_id if self.device_id is not None else 'CPU'}) initialized."
         )
 
     def simulate_local_training(
         self, lora_A: np.ndarray, lora_B: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
         train_time = random.uniform(2, 5) * self.speed_factor
-        print(f"  [{self.worker_id}] Starting training on {self.specialty}... (Est. {train_time:.2f}s)")
+        print(
+            f"  [{self.worker_id}] Starting training on {self.specialty} (GPU {self.device_id})... "
+            f"(Est. {train_time:.2f}s)"
+        )
         time.sleep(train_time)
         delta_A = np.random.randn(*lora_A.shape) * 0.05
         delta_B = np.random.randn(*lora_B.shape) * 0.05
@@ -59,4 +65,3 @@ class HeterogeneousWorker:
                 print(f"[{self.worker_id}] Error: {exc}")
                 time.sleep(5)
         print(f"[{self.worker_id}] Shutting down.")
-
