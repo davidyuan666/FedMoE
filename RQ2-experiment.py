@@ -8,7 +8,7 @@ from fedmoe.experiments import ExperimentConfig, RQ2Experiment
 
 
 def main():
-    parser = argparse.ArgumentParser(description="RQ2 - Communication vs Accuracy (single-machine 3xRTX3060)")
+    parser = argparse.ArgumentParser(description="RQ2 - Specialization Granularity vs Quality (single-machine 3xRTX3060)")
     # Data
     parser.add_argument("--dataset", type=str, default="dataset/test.jsonl")
     parser.add_argument("--num-samples", type=int, default=100)
@@ -21,18 +21,26 @@ def main():
     # Local GPU mapping
     parser.add_argument("--gpu-workers", type=str, default="0,1", help="comma-separated worker GPU ids, e.g., 0,1")
     parser.add_argument("--gpu-agg", type=int, default=2, help="aggregator GPU id, e.g., 2")
-    # Experts (2 GPUs -> commonly 2 experts)
-    parser.add_argument("--experts", type=str, default="python,sql", help="comma-separated expert names")
-    # Grid control (optional)
-    parser.add_argument("--compressions", type=str, default="1.0,0.5", help="comma-separated compression ratios")
-    parser.add_argument("--sync-intervals", type=str, default="2.0,5.0", help="comma-separated sync intervals")
+    # Granularity sets: e.g., "generalist|python,sql|python,sql,docs"
+    parser.add_argument("--sets", type=str, default="generalist|python,sql|python,sql,docs",
+                        help="'|' separated expert sets; each set is comma-separated experts")
     args = parser.parse_args()
 
     Path("logs").mkdir(exist_ok=True)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     worker_gpu_ids = [int(x) for x in args.gpu_workers.split(",") if x.strip() != ""]
-    expert_specialties = [x.strip() for x in args.experts.split(",") if x.strip() != ""]
+
+    # Parse sets -> list of list[str]
+    rq2_sets: list[list[str]] = []
+    for seg in args.sets.split("|"):
+        seg = seg.strip()
+        if not seg:
+            continue
+        rq2_sets.append([x.strip() for x in seg.split(",") if x.strip()])
+
+    # Use first set as default experts for config display; RQ2 class will iterate sets
+    default_experts = rq2_sets[0] if rq2_sets else ["generalist"]
 
     cfg = ExperimentConfig(
         dataset_path=args.dataset,
@@ -41,31 +49,23 @@ def main():
         lora_rank=args.lora_rank,
         num_rounds=args.num_rounds,
         round_duration=args.round_duration,
-        num_experts=len(expert_specialties),
-        expert_specialties=expert_specialties,
+        num_experts=len(default_experts),
+        expert_specialties=default_experts,
         worker_gpu_ids=worker_gpu_ids,
         aggregator_gpu_id=args.gpu_agg,
         use_gateway_model=True,
+        rq2_expert_sets=rq2_sets,
     )
 
     print(f"[RQ2] Workers on GPUs: {worker_gpu_ids}, Aggregator on GPU: {args.gpu_agg}")
-    print(f"[RQ2] Experts: {expert_specialties}")
+    print(f"[RQ2] Sets: {rq2_sets}")
 
-    # Run grid
     exp = RQ2Experiment(cfg)
+    results = exp.run()
 
-    compressions = [float(x) for x in args.compressions.split(",") if x.strip()]
-    syncs = [float(x) for x in args.sync_intervals.split(",") if x.strip()]
-
-    for c in compressions:
-        for s in syncs:
-            exp.run_with_config(compression_ratio=c, sync_interval=s)
-
-    results = exp.analyze_trade_off()
-
-    print("\n[RQ2] Pareto frontier:")
-    for item in results.get("pareto_frontier", []):
-        print(item)
+    print("\n[RQ2] Ranking (best overall first):")
+    for r in results.get("ranking", []):
+        print({"setting": r.get("setting"), "overall": r.get("overall_quality"), "per_domain": r.get("per_domain")})
 
     return 0
 

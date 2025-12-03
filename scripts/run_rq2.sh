@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Run RQ2 experiment (Communication vs Accuracy) on a single machine with 3x RTX 3060.
-# - Two GPUs act as workers (default: 0,1)
-# - One GPU acts as aggregator (default: 2)
+# Run RQ2 (Specialization Granularity vs Quality) on a single machine with 3x RTX 3060.
+# Two GPUs act as workers (default: 0,1), one GPU acts as aggregator (default: 2).
 #
 # Usage (defaults shown):
-#   WORKER_GPUS=0,1 AGG_GPU=2 EXPERTS=python,sql \
+#   WORKER_GPUS=0,1 AGG_GPU=2 \
+#   SETS="generalist|python,sql|python,sql,docs" \
 #   DATASET=dataset/test.jsonl NUM_SAMPLES=100 NUM_ROUNDS=6 ROUND_DURATION=3 \
 #   MODEL_DIM=768 LORA_RANK=16 \
-#   COMPRESSIONS=1.0,0.5 SYNC_INTERVALS=2.0,5.0 \
 #   ./scripts/run_rq2.sh
 #
 # Quick smoke test:
-#   NUM_SAMPLES=10 NUM_ROUNDS=1 ROUND_DURATION=1 COMPRESSIONS=1.0 SYNC_INTERVALS=2.0 ./scripts/run_rq2.sh
+#   NUM_SAMPLES=20 NUM_ROUNDS=2 ROUND_DURATION=1 ./scripts/run_rq2.sh
 
 set -euo pipefail
 
@@ -28,23 +27,21 @@ PYTHON_BIN="${PYTHON:-python}"
 # Parameters with defaults (can be overridden via env)
 WORKER_GPUS="${WORKER_GPUS:-0,1}"
 AGG_GPU="${AGG_GPU:-2}"
-EXPERTS="${EXPERTS:-python,sql}"
+SETS="${SETS:-generalist|python,sql|python,sql,docs}"
 DATASET="${DATASET:-dataset/test.jsonl}"
 NUM_SAMPLES="${NUM_SAMPLES:-100}"
 NUM_ROUNDS="${NUM_ROUNDS:-6}"
 ROUND_DURATION="${ROUND_DURATION:-3}"
 MODEL_DIM="${MODEL_DIM:-768}"
 LORA_RANK="${LORA_RANK:-16}"
-COMPRESSIONS="${COMPRESSIONS:-1.0,0.5}"
-SYNC_INTERVALS="${SYNC_INTERVALS:-2.0,5.0}"
 
 mkdir -p logs
 
 echo "[run_rq2.sh] Using:"
-echo "  WORKER_GPUS=${WORKER_GPUS}  AGG_GPU=${AGG_GPU}  EXPERTS=${EXPERTS}"
+echo "  WORKER_GPUS=${WORKER_GPUS}  AGG_GPU=${AGG_GPU}"
+echo "  SETS=${SETS}"
 echo "  DATASET=${DATASET}  NUM_SAMPLES=${NUM_SAMPLES}  NUM_ROUNDS=${NUM_ROUNDS}  ROUND_DURATION=${ROUND_DURATION}"
 echo "  MODEL_DIM=${MODEL_DIM}  LORA_RANK=${LORA_RANK}"
-echo "  COMPRESSIONS=${COMPRESSIONS}  SYNC_INTERVALS=${SYNC_INTERVALS}"
 
 "${PYTHON_BIN}" RQ2-experiment.py \
   --dataset "${DATASET}" \
@@ -55,7 +52,4 @@ echo "  COMPRESSIONS=${COMPRESSIONS}  SYNC_INTERVALS=${SYNC_INTERVALS}"
   --round-duration "${ROUND_DURATION}" \
   --gpu-workers "${WORKER_GPUS}" \
   --gpu-agg "${AGG_GPU}" \
-  --experts "${EXPERTS}" \
-  --compressions "${COMPRESSIONS}" \
-  --sync-intervals "${SYNC_INTERVALS}" | tee logs/run_rq2.out
-
+  --sets "${SETS}" | tee logs/run_rq2.out

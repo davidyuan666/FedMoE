@@ -1,4 +1,4 @@
-# FedMoE
+# Federated LoRA Tuning for Code Generation by Using Multi-GPU Qwen Fine-Tuning
 Federated LoRA Experts for Multi-GPU Qwen Fine-Tuning
 
 ## Overview
