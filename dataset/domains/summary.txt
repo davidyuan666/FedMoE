@@ -1,7 +1,0 @@
-Input: dataset\test.jsonl
-Total: 1000
-Domains: python, sql, docs
-Counts:
-  - python: 993
-  - sql: 5
-  - docs: 2

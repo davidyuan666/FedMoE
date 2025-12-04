@@ -71,6 +71,11 @@ class ExperimentConfig:
     dataset_path: str = "dataset/ds1000.jsonl"
     num_samples: int = 100  # Number of samples to use
     
+    # Worker-specific datasets (for federated learning with domain specialization)
+    # Maps worker_id or specialty to dataset path
+    # e.g., {"python": "domains/python.jsonl", "sql": "domains/sql.jsonl"}
+    worker_datasets: Optional[Dict[str, str]] = None
+    
     # Simulated model (legacy)
     model_dim: int = 768
     lora_rank: int = 16
@@ -129,22 +134,28 @@ class DS1000DataLoader:
         self.data = []
         self.load_data()
     
-    def load_data(self) -> None:
-        """Load dataset from JSONL file"""
+    @staticmethod
+    def load_from_path(dataset_path: str, num_samples: int = 100) -> List[Dict]:
+        """Load dataset from a single JSONL file"""
+        data = []
         try:
-            with open(self.dataset_path, 'r', encoding='utf-8') as f:
+            with open(dataset_path, 'r', encoding='utf-8') as f:
                 for i, line in enumerate(f):
-                    if i >= self.num_samples:
+                    if i >= num_samples:
                         break
                     try:
                         item = json.loads(line)
-                        self.data.append(item)
+                        data.append(item)
                     except json.JSONDecodeError:
                         continue
-            logging.info(f"Loaded {len(self.data)} samples from {self.dataset_path}")
+            logging.info(f"Loaded {len(data)} samples from {dataset_path}")
         except FileNotFoundError:
-            logging.error(f"Dataset file not found: {self.dataset_path}")
-            self.data = []
+            logging.error(f"Dataset file not found: {dataset_path}")
+        return data
+    
+    def load_data(self) -> None:
+        """Load dataset from JSONL file"""
+        self.data = self.load_from_path(self.dataset_path, self.num_samples)
     
     def split_by_specialty(self, specialties: List[str]) -> Dict[str, List[Dict]]:
         """
@@ -295,8 +306,18 @@ class RQ1Experiment:
                 self.config.lora_rank
             )
         
-        # Split data by specialty
-        specialty_data = self.data_loader.split_by_specialty(self.config.expert_specialties)
+        # Load worker-specific datasets if provided, otherwise use default
+        if self.config.worker_datasets:
+            self.logger.info(f"Using worker-specific datasets: {self.config.worker_datasets}")
+            specialty_data = {}
+            for specialty, dataset_path in self.config.worker_datasets.items():
+                specialty_data[specialty] = DS1000DataLoader.load_from_path(
+                    dataset_path, 
+                    self.config.num_samples
+                )
+        else:
+            # Fall back to splitting default dataset by specialty
+            specialty_data = self.data_loader.split_by_specialty(self.config.expert_specialties)
         
         # Create workers
         workers = []
